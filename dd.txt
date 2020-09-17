@@ -1,0 +1,59 @@
+多进程
+https://blog.csdn.net/qq_33020901/article/details/80207594
+
+top详解
+https://www.cnblogs.com/mengchunchen/p/9669704.html
+
+用户空间与内核空间
+https://blog.csdn.net/weixin_39731083/article/details/82345157
+
+import multiprocessing
+import time
+
+# 定义全局变量Queue
+g_queue = multiprocessing.Queue()
+
+def init_queue():
+    print("init g_queue start")
+    while not g_queue.empty():
+        g_queue.get()
+    for _index in range(10):
+        g_queue.put(_index)
+    print("init g_queue end")
+    return
+
+# 定义一个计算密集型任务：利用一些复杂加减乘除、列表查找等
+g_search_list = list(range(10000))
+def task_cpu(task_id):
+    print("CPUTask[%s] start" % task_id)
+    while not g_queue.empty():
+        count = 0
+        for i in range(10000):
+            count += pow(999,999)
+        try:
+            data = g_queue.get(block=True, timeout=1)
+            print("CPUTask[%s] get data: %s" % (task_id, data))
+        except Exception as excep:
+            print("CPUTask[%s] error: %s" % (task_id, str(excep)))
+    print("CPUTask[%s] end" % task_id)
+    return task_id
+
+if __name__ == '__main__':
+    print("cpu count:", multiprocessing.cpu_count(), "\n")
+ 
+    print("========== 直接执行CPU密集型任务 ==========")
+    init_queue()
+    time_0 = time.time()
+    task_cpu(0)
+    print("结束：", time.time() - time_0, "\n") 
+    
+    print("========== 多进程执行cpu密集型任务 ==========")
+    init_queue()
+    time_0 = time.time()
+    process_list = [multiprocessing.Process(target=task_cpu, args=(i,)) for i in range(multiprocessing.cpu_count())]
+    for p in process_list:
+        p.start()
+    for p in process_list:
+        if p.is_alive():
+            p.join()
+    print("结束：", time.time() - time_0, "\n")
